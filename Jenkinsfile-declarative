@@ -1,3 +1,4 @@
+
 pipeline {
 	agent any
 
@@ -10,8 +11,28 @@ pipeline {
 
 					print ("Building the war package")
 					sh "mvn install"
-								}
-							}
-					}
+
+					print ("Stash the package")
+					stash ( includes: "target/hello-web.war", name: "package")
+				}
 			}
 		}
+		stage ("Deploy the package") {
+			steps {
+				node ("deploy-ser") {
+					print ("Unstash the package")
+					unstash (name: "package")
+
+					print ("Delete the old package if present")
+					sh "rm -rf /usr/local/tomcat/webapps/hello-web.war"
+
+					print ("Copy the new package")
+					sh "cp /app/build_server/workspace/pipeline-example/target/hello-web.war /usr/local/tomcat/webapps/"
+				}
+			}
+		}
+	}
+	post {
+		Failure:
+	}
+
